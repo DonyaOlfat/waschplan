@@ -5,6 +5,8 @@
     "server"
   ],
   "scripts": {
+    "dev": "npm run dev -w server",
+    "start": "npm start -w server",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
