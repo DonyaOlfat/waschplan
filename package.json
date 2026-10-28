@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "workspaces": ["server"],
+  "engines": {
+    "node": ">=24"
+  }
+}
