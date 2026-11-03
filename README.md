@@ -32,6 +32,18 @@ npm run lint
 npm run format
 ```
 
+## Database
+
+Postgres 17 runs in Docker. Start Docker Desktop, then from the repo root:
+
+```bash
+docker compose up -d
+```
+
+This starts one Postgres server on `localhost:5432` with two databases: `waschplan_dev` for development and `waschplan_test` for the automated tests. User and password are both `waschplan` (local only).
+
+Stop it with `docker compose down`. To delete all data and start fresh, run `docker compose down -v`.
+
 ## server/
 
 - `src/server.js` starts the HTTP server.
