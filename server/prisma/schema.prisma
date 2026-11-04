@@ -1,0 +1,94 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  sessions     Session[]
+  membership   Membership?
+  bookings     Booking[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+model House {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  inviteCode  String       @unique
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  machines    Machine[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  houseId   String
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Restrict)
+  role      Role
+  createdAt DateTime @default(now())
+
+  @@index([houseId])
+}
+
+model Machine {
+  id        String      @id @default(cuid())
+  houseId   String
+  house     House       @relation(fields: [houseId], references: [id], onDelete: Restrict)
+  name      String
+  type      MachineType
+  isBroken  Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  bookings  Booking[]
+
+  @@unique([houseId, name])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  machineId String
+  machine   Machine       @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  startsAt  DateTime
+  endsAt    DateTime
+  status    BookingStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+
+  @@unique([machineId, startsAt])
+  @@index([userId, startsAt])
+}
+
+enum Role {
+  ADMIN
+  RESIDENT
+}
+
+enum MachineType {
+  WASHER
+  DRYER
+}
+
+enum BookingStatus {
+  ACTIVE
+  AFFECTED
+}
+
