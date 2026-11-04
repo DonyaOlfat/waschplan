@@ -44,6 +44,23 @@ This starts one Postgres server on `localhost:5432` with two databases: `waschpl
 
 Stop it with `docker compose down`. To delete all data and start fresh, run `docker compose down -v`.
 
+Load the demo house with:
+
+```bash
+npm run seed
+```
+
+The house is Wittensteinstraße 12 in Wuppertal. Its slug is `wittensteinstr-12` and its invite code is `WUPP42`. It has three machines, none of them broken: Waschmaschine 1 and Waschmaschine 2 (washers) and Trockner (dryer).
+
+All four users sign in with the password `waschplan`:
+
+- Lena, `lena@wittensteinstr.example`, admin
+- Jonas, `jonas@wittensteinstr.example`, resident
+- Mira, `mira@wittensteinstr.example`, resident
+- Paul, `paul@wittensteinstr.example`, resident
+
+Running the seed again updates these same rows.
+
 ## server/
 
 - `src/server.js` starts the HTTP server.
