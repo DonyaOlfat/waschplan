@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "db:generate": "npm run db:generate -w server",
-    "db:migrate": "npm run db:migrate -w server"
+    "db:migrate": "npm run db:migrate -w server",
+    "seed": "npm run seed -w server"
   },
   "engines": {
     "node": ">=24"
@@ -32,6 +33,7 @@
   "allowScripts": {
     "prisma@6.19.3": true,
     "@prisma/client@6.19.3": true,
-    "@prisma/engines@6.19.3": true
+    "@prisma/engines@6.19.3": true,
+    "bcrypt@6.0.0": true
   }
 }
