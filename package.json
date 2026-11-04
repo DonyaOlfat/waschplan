@@ -12,7 +12,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:generate": "npm run db:generate -w server"
   },
   "engines": {
     "node": ">=24"
@@ -26,5 +27,10 @@
     "globals": "^17.13.0",
     "husky": "^9.1.7",
     "prettier": "^3.9.10"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true
   }
 }
