@@ -28,16 +28,32 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npm test
+test:
+  runs-on: ubuntu-latest
+  env:
+    DATABASE_URL: postgresql://waschplan:waschplan@localhost:5432/waschplan_test
+  services:
+    postgres:
+      image: postgres:17
+      env:
+        POSTGRES_USER: waschplan
+        POSTGRES_PASSWORD: waschplan
+        POSTGRES_DB: waschplan_test
+      ports:
+        - 5432:5432
+      options: >-
+        --health-cmd "pg_isready -U waschplan -d waschplan_test"
+        --health-interval 5s
+        --health-timeout 5s
+        --health-retries 10
+  steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm ci
+    - run: npm test
 
   commitlint:
     if: github.event_name == 'pull_request'
