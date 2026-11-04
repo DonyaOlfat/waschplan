@@ -42,6 +42,8 @@ docker compose up -d
 
 This starts one Postgres server on `localhost:5432` with two databases: `waschplan_dev` for development and `waschplan_test` for the automated tests. User and password are both `waschplan` (local only).
 
+npm test uses waschplan_test and needs Docker to be running.
+
 Stop it with `docker compose down`. To delete all data and start fresh, run `docker compose down -v`.
 
 Load the demo house with:
