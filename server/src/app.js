@@ -1,11 +1,20 @@
 import express from 'express';
 import { healthRouter } from './modules/health/routes.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { notFoundHandler } from './middleware/not-found.js';
 
-export function createApp() {
+export function createApp({ configure } = {}) {
   const app = express();
 
   app.use(express.json());
   app.use('/api/health', healthRouter);
+
+  if (configure) {
+    configure(app);
+  }
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }
