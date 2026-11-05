@@ -58,6 +58,28 @@ export async function loginUser({ email, password }) {
   return { user: toPublicUser(user), token };
 }
 
+export async function getUserBySessionToken(token) {
+  if (typeof token !== 'string' || token.length === 0) {
+    return null;
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: hashSessionToken(token) },
+    include: { user: true },
+  });
+
+  if (!session) {
+    return null;
+  }
+
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await prisma.session.delete({ where: { id: session.id } });
+    return null;
+  }
+
+  return toPublicUser(session.user);
+}
+
 export async function logoutSession(token) {
   if (!token) {
     return;

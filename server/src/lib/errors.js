@@ -4,6 +4,7 @@ export const errorCodes = {
   CONFLICT: { status: 409, message: 'This conflicts with existing data.' },
   EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
   INVALID_CREDENTIALS: { status: 401, message: 'Email or password is incorrect.' },
+  UNAUTHENTICATED: { status: 401, message: 'You need to log in.' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong.' },
 };
 
