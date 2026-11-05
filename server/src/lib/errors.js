@@ -2,6 +2,7 @@ export const errorCodes = {
   VALIDATION_ERROR: { status: 400, message: 'Invalid input.' },
   NOT_FOUND: { status: 404, message: 'Not found.' },
   CONFLICT: { status: 409, message: 'This conflicts with existing data.' },
+  EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong.' },
 };
 
