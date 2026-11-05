@@ -1,10 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import bcrypt from 'bcrypt';
+import { hashPassword } from '../src/lib/password.js';
 import { prisma } from '../src/lib/prisma.js';
 
 const DEMO_PASSWORD = 'waschplan';
-const BCRYPT_COST = 12;
 
 const HOUSE = {
   name: 'Wittensteinstraße 12',
@@ -26,7 +25,7 @@ const MACHINES = [
 ];
 
 export async function seed(client = prisma) {
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_COST);
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
 
   const house = await client.house.upsert({
     where: { slug: HOUSE.slug },
