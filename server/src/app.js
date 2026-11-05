@@ -5,13 +5,13 @@ import { createAuthRouter } from './modules/auth/routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFoundHandler } from './middleware/not-found.js';
 
-export function createApp({ configure } = {}) {
+export function createApp({ configure, auth } = {}) {
   const app = express();
 
   app.use(express.json());
   app.use(cookieParser());
   app.use('/api/health', healthRouter);
-  app.use('/api/auth', createAuthRouter());
+  app.use('/api/auth', createAuthRouter(auth));
 
   if (configure) {
     configure(app);
