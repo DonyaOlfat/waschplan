@@ -1,5 +1,6 @@
 import express from 'express';
 import { env } from '../../config/env.js';
+import { requireAuth } from '../../middleware/require-auth.js';
 import { validate } from '../../middleware/validate.js';
 import { SESSION_COOKIE, sessionCookieOptions } from '../../lib/session.js';
 import { loginBodySchema, registerBodySchema } from './schemas.js';
@@ -23,6 +24,10 @@ export function createAuthRouter() {
     await logoutSession(req.cookies?.[SESSION_COOKIE]);
     res.clearCookie(SESSION_COOKIE, sessionCookieOptions(env.NODE_ENV));
     res.status(204).send();
+  });
+
+  router.get('/me', requireAuth, (req, res) => {
+    res.status(200).json(req.user);
   });
 
   return router;
