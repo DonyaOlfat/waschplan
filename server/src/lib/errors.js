@@ -3,6 +3,7 @@ export const errorCodes = {
   NOT_FOUND: { status: 404, message: 'Not found.' },
   CONFLICT: { status: 409, message: 'This conflicts with existing data.' },
   EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
+  INVALID_CREDENTIALS: { status: 401, message: 'Email or password is incorrect.' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong.' },
 };
 

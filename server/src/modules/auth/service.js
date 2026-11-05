@@ -1,7 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../lib/errors.js';
-import { hashPassword } from '../../lib/password.js';
+import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { prisma } from '../../lib/prisma.js';
+import { createSessionToken, hashSessionToken, SESSION_TTL_MS } from '../../lib/session.js';
+
+// Compared when the email is unknown so both login failures run bcrypt once.
+const DUMMY_PASSWORD_HASH = '$2b$12$xYhbq/ef1w4bagiOvWzth.dRswi7ASCiSsgGPa.7IcA9yAc3k1qou';
 
 export function toPublicUser(user) {
   return {
@@ -30,4 +34,36 @@ export async function registerUser({ email, name, password }) {
 
     throw error;
   }
+}
+
+export async function loginUser({ email, password }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
+  const passwordMatches = await verifyPassword(password, passwordHash);
+
+  if (!user || !passwordMatches) {
+    throw new AppError('INVALID_CREDENTIALS');
+  }
+
+  const token = createSessionToken();
+
+  await prisma.session.create({
+    data: {
+      id: hashSessionToken(token),
+      userId: user.id,
+      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+    },
+  });
+
+  return { user: toPublicUser(user), token };
+}
+
+export async function logoutSession(token) {
+  if (!token) {
+    return;
+  }
+
+  await prisma.session.deleteMany({
+    where: { id: hashSessionToken(token) },
+  });
 }
