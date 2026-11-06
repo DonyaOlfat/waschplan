@@ -14,3 +14,11 @@ export const createHouseBodySchema = z.object({
 export const joinHouseBodySchema = z.object({
   inviteCode: inviteCodeSchema,
 });
+
+export const houseSlugParamsSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .max(120)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+});
