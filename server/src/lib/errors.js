@@ -1,6 +1,7 @@
 export const errorCodes = {
   VALIDATION_ERROR: { status: 400, message: 'Invalid input.' },
   NOT_FOUND: { status: 404, message: 'Not found.' },
+  INVALID_INVITE_CODE: { status: 404, message: 'This invite code is not valid.' },
   CONFLICT: { status: 409, message: 'This conflicts with existing data.' },
   ALREADY_IN_HOUSE: { status: 409, message: 'You are already in a house.' },
   EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
