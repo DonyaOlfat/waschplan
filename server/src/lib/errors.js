@@ -7,6 +7,7 @@ export const errorCodes = {
   EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
   INVALID_CREDENTIALS: { status: 401, message: 'Email or password is incorrect.' },
   UNAUTHENTICATED: { status: 401, message: 'You need to log in.' },
+  FORBIDDEN: { status: 403, message: 'You are not allowed to do that.' },
   TOO_MANY_REQUESTS: { status: 429, message: 'Too many login attempts. Try again later.' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong.' },
 };
