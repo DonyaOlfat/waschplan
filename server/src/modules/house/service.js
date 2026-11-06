@@ -127,6 +127,40 @@ export async function joinHouse({ userId, inviteCode }) {
   return toPublicHouse(house, 'RESIDENT');
 }
 
+export async function leaveHouse({ userId, houseId }) {
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Membership" WHERE "houseId" = ${houseId} FOR UPDATE`;
+
+    const membership = await tx.membership.findUnique({ where: { userId } });
+
+    if (!membership || membership.houseId !== houseId) {
+      throw new AppError('NOT_FOUND');
+    }
+
+    if (membership.role === 'ADMIN') {
+      const adminCount = await tx.membership.count({
+        where: { houseId, role: 'ADMIN' },
+      });
+
+      if (adminCount <= 1) {
+        throw new AppError('LAST_ADMIN');
+      }
+    }
+
+    const now = new Date();
+
+    await tx.booking.deleteMany({
+      where: {
+        userId,
+        startsAt: { gt: now },
+        machine: { houseId },
+      },
+    });
+
+    await tx.membership.delete({ where: { userId } });
+  });
+}
+
 function uniqueFields(error) {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
     return null;
