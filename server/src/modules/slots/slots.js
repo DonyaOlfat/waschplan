@@ -28,3 +28,34 @@ export function generateWeekSlots(instant) {
 
   return slots;
 }
+
+export function validateSlotStart(instant) {
+  const berlin = toBerlinDateTime(instant);
+  const onOpeningHour =
+    berlin.hour >= OPENING_HOUR &&
+    berlin.hour < CLOSING_HOUR &&
+    (berlin.hour - OPENING_HOUR) % SLOT_LENGTH_HOURS === 0;
+  const onTheHour = berlin.minute === 0 && berlin.second === 0 && berlin.millisecond === 0;
+
+  if (!OPEN_WEEKDAYS.includes(berlin.weekday) || !onOpeningHour || !onTheHour) {
+    return { ok: false, reason: 'OUTSIDE_OPENING_HOURS' };
+  }
+
+  return { ok: true };
+}
+
+export function validateBookingWindow(instant, now) {
+  const start = toBerlinDateTime(startOfBerlinWeek(now));
+  const end = start.plus({ weeks: BOOKING_WINDOW_WEEKS });
+  const startsAt = toBerlinDateTime(instant).toMillis();
+
+  if (startsAt < start.toMillis() || startsAt >= end.toMillis()) {
+    return { ok: false, reason: 'OUTSIDE_BOOKING_WINDOW' };
+  }
+
+  return { ok: true };
+}
+
+export function isSlotInPast(startsAt, now) {
+  return toBerlinDateTime(startsAt).toMillis() <= toBerlinDateTime(now).toMillis();
+}
