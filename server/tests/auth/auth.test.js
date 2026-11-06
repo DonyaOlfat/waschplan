@@ -198,8 +198,8 @@ describe('auth', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.name).toBe('Lena');
-      expect(response.body.houseSlug).toBeNull();
-      expect(response.body.role).toBeNull();
+      expect(response.body.houseSlug).toBe('wittensteinstr-12');
+      expect(response.body.role).toBe('ADMIN');
       expect(response.body).not.toHaveProperty('passwordHash');
     });
   });
@@ -278,7 +278,7 @@ describe('auth', () => {
       expect(response.body).not.toHaveProperty('passwordHash');
     });
 
-    it('keeps house slug and role null when a membership exists', async () => {
+    it('returns the house slug and role when a membership exists', async () => {
       await register();
       const agent = request.agent(app);
 
@@ -296,8 +296,8 @@ describe('auth', () => {
       const response = await agent.get('/api/auth/me');
 
       expect(response.status).toBe(200);
-      expect(response.body.houseSlug).toBeNull();
-      expect(response.body.role).toBeNull();
+      expect(response.body.houseSlug).toBe('house');
+      expect(response.body.role).toBe('ADMIN');
     });
 
     it('returns 401 for an expired session and deletes the row', async () => {
