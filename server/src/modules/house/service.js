@@ -81,6 +81,52 @@ export async function createHouse({ userId, name }) {
   throw new AppError('CONFLICT');
 }
 
+export async function joinHouse({ userId, inviteCode }) {
+  const existing = await prisma.membership.findUnique({ where: { userId } });
+
+  if (existing) {
+    throw new AppError('ALREADY_IN_HOUSE');
+  }
+
+  const house = await prisma.house.findUnique({ where: { inviteCode } });
+
+  if (!house) {
+    throw new AppError('INVALID_INVITE_CODE');
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const membership = await tx.membership.findUnique({ where: { userId } });
+
+      if (membership) {
+        throw new AppError('ALREADY_IN_HOUSE');
+      }
+
+      await tx.membership.create({
+        data: {
+          userId,
+          houseId: house.id,
+          role: 'RESIDENT',
+        },
+      });
+    });
+  } catch (error) {
+    if (isAppError(error)) {
+      throw error;
+    }
+
+    const fields = uniqueFields(error);
+
+    if (fields?.some((field) => field.includes('userId'))) {
+      throw new AppError('ALREADY_IN_HOUSE');
+    }
+
+    throw error;
+  }
+
+  return toPublicHouse(house, 'RESIDENT');
+}
+
 function uniqueFields(error) {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
     return null;
