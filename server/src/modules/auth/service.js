@@ -7,14 +7,22 @@ import { createSessionToken, hashSessionToken, SESSION_TTL_MS } from '../../lib/
 // Compared when the email is unknown so both login failures run bcrypt once.
 const DUMMY_PASSWORD_HASH = '$2b$12$xYhbq/ef1w4bagiOvWzth.dRswi7ASCiSsgGPa.7IcA9yAc3k1qou';
 
+const membershipInclude = {
+  membership: {
+    include: {
+      house: true,
+    },
+  },
+};
+
 export function toPublicUser(user) {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     createdAt: user.createdAt,
-    houseSlug: null,
-    role: null,
+    houseSlug: user.membership?.house?.slug ?? null,
+    role: user.membership?.role ?? null,
   };
 }
 
@@ -37,7 +45,10 @@ export async function registerUser({ email, name, password }) {
 }
 
 export async function loginUser({ email, password }) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: membershipInclude,
+  });
   const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
   const passwordMatches = await verifyPassword(password, passwordHash);
 
@@ -65,7 +76,7 @@ export async function getUserBySessionToken(token) {
 
   const session = await prisma.session.findUnique({
     where: { id: hashSessionToken(token) },
-    include: { user: true },
+    include: { user: { include: membershipInclude } },
   });
 
   if (!session) {
