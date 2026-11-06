@@ -336,7 +336,14 @@ describe('houses', () => {
 
     it('lets one admin leave when another admin remains', async () => {
       const ada = await registerAndLogin('ada@example.com', 'Ada');
-      const bea = await registerAndLogin('bea@example.com', 'Bea');
+      const registered = await request(app).post('/api/auth/register').send({
+        email: 'bea@example.com',
+        name: 'Bea',
+        password: PASSWORD,
+      });
+
+      expect(registered.status).toBe(201);
+
       const house = await createNamedHouse(ada, 'Haus');
       const beaUser = await prisma.user.findUnique({ where: { email: 'bea@example.com' } });
 
