@@ -9,6 +9,7 @@ describe('loadEnv', () => {
       NODE_ENV: 'development',
       PORT: 3000,
       DATABASE_URL,
+      CORS_ORIGINS: 'http://localhost:5173',
     });
   });
 
