@@ -62,7 +62,7 @@ export async function renameMachine({ houseId, machineId, name }) {
   }
 }
 
-export async function setMachineBroken({ houseId, machineId, isBroken }) {
+export async function setMachineBroken({ houseId, machineId, isBroken, now }) {
   const machine = await prisma.$transaction(async (tx) => {
     const existing = await tx.machine.findFirst({
       where: { id: machineId, houseId },
@@ -72,10 +72,23 @@ export async function setMachineBroken({ houseId, machineId, isBroken }) {
       throw new AppError('NOT_FOUND');
     }
 
-    return tx.machine.update({
+    const updated = await tx.machine.update({
       where: { id: existing.id },
       data: { isBroken },
     });
+
+    if (isBroken) {
+      await tx.booking.updateMany({
+        where: {
+          machineId: existing.id,
+          status: 'ACTIVE',
+          startsAt: { gt: now },
+        },
+        data: { status: 'AFFECTED' },
+      });
+    }
+
+    return updated;
   });
 
   return toPublicMachine(machine);
