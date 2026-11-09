@@ -8,7 +8,7 @@ import {
   machineIdParamsSchema,
   renameMachineBodySchema,
 } from './schemas.js';
-import { createMachine, listMachines, renameMachine } from './service.js';
+import { createMachine, deleteMachine, listMachines, renameMachine } from './service.js';
 
 export function createMachineRouter() {
   const router = express.Router();
@@ -55,6 +55,22 @@ export function createMachineRouter() {
         name: req.body.name,
       });
       res.status(200).json(machine);
+    },
+  );
+
+  router.delete(
+    '/:slug/machines/:id',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema.passthrough() }),
+    requireMember,
+    requireAdmin,
+    validate({ params: machineIdParamsSchema }),
+    async (req, res) => {
+      await deleteMachine({
+        houseId: req.house.id,
+        machineId: req.params.id,
+      });
+      res.status(204).send();
     },
   );
 
