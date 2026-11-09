@@ -51,6 +51,20 @@ export function toBerlinDateTime(instant) {
   return parsed.setZone(BERLIN_ZONE);
 }
 
+export function parseBerlinDate(isoDate) {
+  if (typeof isoDate !== 'string') {
+    throw new TypeError('Date must be YYYY-MM-DD.');
+  }
+
+  const parsed = DateTime.fromISO(isoDate, { zone: BERLIN_ZONE });
+
+  if (!parsed.isValid || parsed.toISODate() !== isoDate) {
+    throw new TypeError('Date must be YYYY-MM-DD.');
+  }
+
+  return parsed.startOf('day').toJSDate();
+}
+
 function hasZoneOffset(value) {
   if (ENDS_WITH_Z.test(value)) {
     return true;
