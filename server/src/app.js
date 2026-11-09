@@ -5,6 +5,7 @@ import { createAuthRouter } from './modules/auth/routes.js';
 import { createHouseRouter } from './modules/house/routes.js';
 import { createMachineRouter } from './modules/machine/routes.js';
 import { createBookingRouter } from './modules/booking/routes.js';
+import { createAdminRouter } from './modules/admin/routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFoundHandler } from './middleware/not-found.js';
 
@@ -18,6 +19,7 @@ export function createApp({ configure, auth } = {}) {
   app.use('/api/houses', createHouseRouter());
   app.use('/api/houses', createMachineRouter());
   app.use('/api/houses', createBookingRouter());
+  app.use('/api/houses', createAdminRouter());
 
   if (configure) {
     configure(app);
