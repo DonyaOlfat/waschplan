@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/lib/prisma.js';
 import { setMachineBroken } from '../../src/modules/machine/service.js';
+import {
+  generateWeekSlots,
+  isSlotInPast,
+  validateBookingWindow,
+} from '../../src/modules/slots/slots.js';
 import { createLoginRateLimit } from '../../src/middleware/login-rate-limit.js';
 import { resetDatabase } from '../helpers/reset-database.js';
 
@@ -42,6 +47,29 @@ async function createNamedHouse(agent, name) {
 function machinesPath(slug, id) {
   const path = `/api/houses/${slug}/machines`;
   return id ? `${path}/${id}` : path;
+}
+
+function bookingsPath(slug) {
+  return `/api/houses/${slug}/bookings`;
+}
+
+function earliestBookableSlot(now) {
+  let instant = now;
+
+  for (let week = 0; week < 4; week += 1) {
+    const slots = generateWeekSlots(instant);
+    const open = slots.find(
+      (slot) => validateBookingWindow(slot.startsAt, now).ok && !isSlotInPast(slot.startsAt, now),
+    );
+
+    if (open) {
+      return open;
+    }
+
+    instant = new Date(slots.at(-1).endsAt.getTime() + 2 * 24 * 60 * 60 * 1000);
+  }
+
+  throw new Error('No bookable slot.');
 }
 
 function bookingAt(machineId, userId, startsAt, status) {
@@ -559,6 +587,71 @@ describe('machines', () => {
       expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
         false,
       );
+    });
+
+    it('breaks a machine, rejects a booking, and restores future bookings on repair', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const house = await createNamedHouse(ada, 'Haus');
+      const adaUser = await prisma.user.findUnique({ where: { email: 'ada@example.com' } });
+      const machine = await prisma.machine.create({
+        data: { houseId: house.id, name: 'Waschmaschine 1', type: 'WASHER' },
+      });
+      const pastStart = new Date('2020-06-15T10:00:00.000Z');
+      const futureStart = new Date('2099-06-15T10:00:00.000Z');
+      const slot = earliestBookableSlot(new Date());
+
+      await prisma.booking.createMany({
+        data: [
+          bookingAt(machine.id, adaUser.id, pastStart, 'ACTIVE'),
+          bookingAt(machine.id, adaUser.id, futureStart, 'ACTIVE'),
+        ],
+      });
+
+      const broken = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+      });
+      const afterBreak = await prisma.booking.findMany({ where: { machineId: machine.id } });
+      const rejected = await ada.post(bookingsPath(house.slug)).send({
+        machineId: machine.id,
+        startsAt: slot.startsAt.toISOString(),
+      });
+
+      expect(broken.status).toBe(200);
+      expect(broken.body).toMatchObject({ id: machine.id, isBroken: true });
+      expect(afterBreak).toHaveLength(2);
+      expect(statusAt(afterBreak, machine.id, futureStart)).toBe('AFFECTED');
+      expect(statusAt(afterBreak, machine.id, pastStart)).toBe('ACTIVE');
+      expect(rejected.status).toBe(409);
+      expect(rejected.body).toEqual({
+        error: { code: 'MACHINE_BROKEN', message: 'This machine is broken.' },
+      });
+      expect(await prisma.booking.count({ where: { machineId: machine.id } })).toBe(2);
+
+      const repaired = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: false,
+      });
+      const afterRepair = await prisma.booking.findMany({ where: { machineId: machine.id } });
+
+      expect(repaired.status).toBe(200);
+      expect(repaired.body).toMatchObject({ id: machine.id, isBroken: false });
+      expect(statusAt(afterRepair, machine.id, futureStart)).toBe('ACTIVE');
+      expect(statusAt(afterRepair, machine.id, pastStart)).toBe('ACTIVE');
+
+      const created = await ada.post(bookingsPath(house.slug)).send({
+        machineId: machine.id,
+        startsAt: slot.startsAt.toISOString(),
+      });
+      const afterCreate = await prisma.booking.findMany({ where: { machineId: machine.id } });
+
+      expect(created.status).toBe(201);
+      expect(created.body).toMatchObject({
+        machineId: machine.id,
+        startsAt: slot.startsAt.toISOString(),
+        status: 'ACTIVE',
+      });
+      expect(afterCreate).toHaveLength(3);
+      expect(statusAt(afterCreate, machine.id, futureStart)).toBe('ACTIVE');
+      expect(statusAt(afterCreate, machine.id, pastStart)).toBe('ACTIVE');
     });
   });
 
