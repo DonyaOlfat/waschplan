@@ -6,6 +6,18 @@ import { toPublicHouse } from '../house/service.js';
 
 const REGENERATE_ATTEMPTS = 5;
 
+const memberSelect = {
+  userId: true,
+  houseId: true,
+  role: true,
+  user: {
+    select: {
+      name: true,
+      email: true,
+    },
+  },
+};
+
 export function toPublicMember(membership) {
   return {
     userId: membership.userId,
@@ -32,6 +44,39 @@ export async function listMembers(houseId) {
   });
 
   return memberships.map(toPublicMember);
+}
+
+export async function updateMemberRole({ houseId, userId, role }) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Membership" WHERE "houseId" = ${houseId} FOR UPDATE`;
+
+    const membership = await tx.membership.findUnique({
+      where: { userId },
+      select: memberSelect,
+    });
+
+    if (!membership || membership.houseId !== houseId) {
+      throw new AppError('NOT_FOUND');
+    }
+
+    if (membership.role === 'ADMIN' && role === 'RESIDENT') {
+      const adminCount = await tx.membership.count({
+        where: { houseId, role: 'ADMIN' },
+      });
+
+      if (adminCount <= 1) {
+        throw new AppError('LAST_ADMIN');
+      }
+    }
+
+    const updated = await tx.membership.update({
+      where: { userId },
+      data: { role },
+      select: memberSelect,
+    });
+
+    return toPublicMember(updated);
+  });
 }
 
 export async function regenerateInviteCode({ houseId }) {
