@@ -6,7 +6,7 @@ import {
   validateBookingWindow,
   validateSlotStart,
 } from '../../src/modules/slots/slots.js';
-import { BERLIN_ZONE, startOfBerlinWeek } from '../../src/modules/slots/time.js';
+import { BERLIN_ZONE, parseBerlinDate, startOfBerlinWeek } from '../../src/modules/slots/time.js';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const OPENING_HOURS = [6, 8, 10, 12, 14, 16, 18, 20];
@@ -78,6 +78,35 @@ describe('startOfBerlinWeek', () => {
     expect(() => startOfBerlinWeek('2026-03-29T00:30:00')).toThrow(TypeError);
     expect(() => startOfBerlinWeek('2026-03-29')).toThrow(TypeError);
     expect(() => startOfBerlinWeek('2026-13-40T00:00:00.000Z')).toThrow(TypeError);
+  });
+});
+
+describe('parseBerlinDate', () => {
+  it('returns Berlin midnight on both daylight-saving boundaries', () => {
+    expect(parseBerlinDate('2026-03-29').toISOString()).toBe('2026-03-28T23:00:00.000Z');
+    expect(parseBerlinDate('2026-03-30').toISOString()).toBe('2026-03-29T22:00:00.000Z');
+    expect(parseBerlinDate('2026-10-25').toISOString()).toBe('2026-10-24T22:00:00.000Z');
+    expect(parseBerlinDate('2026-10-26').toISOString()).toBe('2026-10-25T23:00:00.000Z');
+  });
+
+  it('builds the same 48 slots from the Sunday and from its Monday', () => {
+    const fromSunday = generateWeekSlots(parseBerlinDate('2026-03-29'));
+    const fromMonday = generateWeekSlots(parseBerlinDate('2026-03-23'));
+
+    expect(slotInstants(fromSunday)).toEqual(slotInstants(fromMonday));
+    expect(fromSunday[0].startsAt.toISOString()).toBe('2026-03-23T05:00:00.000Z');
+    expect(generateWeekSlots(parseBerlinDate('2026-10-25'))[0].startsAt.toISOString()).toBe(
+      '2026-10-19T04:00:00.000Z',
+    );
+    expect(generateWeekSlots(parseBerlinDate('2026-10-26'))[0].startsAt.toISOString()).toBe(
+      '2026-10-26T05:00:00.000Z',
+    );
+  });
+
+  it('rejects a zoned datetime and a date that is not YYYY-MM-DD', () => {
+    expect(() => parseBerlinDate('2026-04-01T00:00:00.000Z')).toThrow(TypeError);
+    expect(() => parseBerlinDate('2026-02-31')).toThrow(TypeError);
+    expect(() => parseBerlinDate('2026-4-1')).toThrow(TypeError);
   });
 });
 
