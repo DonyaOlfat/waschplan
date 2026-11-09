@@ -7,6 +7,7 @@ import {
   validateBookingWindow,
   validateSlotStart,
 } from '../slots/slots.js';
+import { parseBerlinDate, startOfBerlinWeek, toBerlinDateTime } from '../slots/time.js';
 
 export function toPublicBooking(booking) {
   return {
@@ -97,4 +98,88 @@ export async function createBooking({ userId, houseId, machineId, startsAt, now 
       throw error;
     }
   });
+}
+
+export async function getMachineWeek({ houseId, machineId, start, userId, now }) {
+  const machine = await prisma.machine.findFirst({
+    where: { id: machineId, houseId },
+  });
+
+  if (!machine) {
+    throw new AppError('NOT_FOUND');
+  }
+
+  const startDate = parseBerlinDate(start);
+  const slots = generateWeekSlots(startDate);
+  const bookings = await prisma.booking.findMany({
+    where: {
+      machineId: machine.id,
+      startsAt: { in: slots.map((slot) => slot.startsAt) },
+    },
+    select: {
+      userId: true,
+      startsAt: true,
+      status: true,
+      user: { select: { name: true } },
+    },
+  });
+  const bookingsByStart = new Map(bookings.map((booking) => [booking.startsAt.getTime(), booking]));
+
+  return {
+    machineId: machine.id,
+    weekStart: toBerlinDateTime(startOfBerlinWeek(startDate)).toISODate(),
+    slots: slots.map((slot) =>
+      toWeekSlot(slot, bookingsByStart.get(slot.startsAt.getTime()), {
+        userId,
+        now,
+        isBroken: machine.isBroken,
+      }),
+    ),
+  };
+}
+
+function toWeekSlot(slot, booking, { userId, now, isBroken }) {
+  const view = {
+    startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    status: weekSlotStatus(slot, booking, { userId, now, isBroken }),
+  };
+
+  if (!booking) {
+    return view;
+  }
+
+  return {
+    ...view,
+    bookedBy: firstName(booking.user.name),
+    mine: booking.userId === userId,
+  };
+}
+
+function weekSlotStatus(slot, booking, { userId, now, isBroken }) {
+  if (isSlotInPast(slot.startsAt, now)) {
+    return 'past';
+  }
+
+  if (booking?.status === 'AFFECTED') {
+    return 'affected';
+  }
+
+  if (booking?.status === 'ACTIVE' && booking.userId === userId) {
+    return 'mine';
+  }
+
+  if (booking?.status === 'ACTIVE') {
+    return 'booked';
+  }
+
+  if (isBroken && !booking) {
+    return 'broken';
+  }
+
+  return 'free';
+}
+
+function firstName(name) {
+  return name.trim().split(/\s+/)[0];
 }
