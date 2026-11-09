@@ -60,7 +60,7 @@ export function createBookingRouter() {
         userId: req.user.id,
         houseId: req.house.id,
         bookingId: req.params.id,
-        isAdmin: false,
+        isAdmin: req.membership.role === 'ADMIN',
         now: new Date(),
       });
 
