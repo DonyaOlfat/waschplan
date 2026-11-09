@@ -9,6 +9,7 @@ import { createMachineRouter } from './modules/machine/routes.js';
 import { createBookingRouter } from './modules/booking/routes.js';
 import { createAdminRouter } from './modules/admin/routes.js';
 import { createCorsMiddleware, parseCorsOrigins } from './middleware/cors.js';
+import { createRequestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFoundHandler } from './middleware/not-found.js';
 
@@ -17,6 +18,7 @@ export function createApp({ configure, auth } = {}) {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(createCorsMiddleware(parseCorsOrigins(env.CORS_ORIGINS)));
+  app.use(createRequestLogger(env.NODE_ENV));
   app.use(express.json());
   app.use(cookieParser());
   app.use('/api/health', healthRouter);
