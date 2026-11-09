@@ -162,6 +162,26 @@ export async function listMyBookings({ userId, houseId, now }) {
   }));
 }
 
+export async function cancelBooking({ userId, houseId, bookingId, now }) {
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, machine: { houseId } },
+  });
+
+  if (!booking) {
+    throw new AppError('NOT_FOUND');
+  }
+
+  if (booking.userId !== userId) {
+    throw new AppError('FORBIDDEN');
+  }
+
+  if (isSlotInPast(booking.startsAt, now)) {
+    throw new AppError('SLOT_IN_PAST');
+  }
+
+  await prisma.booking.delete({ where: { id: booking.id } });
+}
+
 function toWeekSlot(slot, booking, { userId, now, isBroken }) {
   const view = {
     startsAt: slot.startsAt,

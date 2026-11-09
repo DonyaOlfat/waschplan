@@ -3,12 +3,13 @@ import { requireAuth } from '../../middleware/require-auth.js';
 import { requireMember } from '../../middleware/require-member.js';
 import { validate } from '../../middleware/validate.js';
 import {
+  bookingIdParamsSchema,
   createBookingBodySchema,
   houseSlugParamsSchema,
   weekParamsSchema,
   weekQuerySchema,
 } from './schemas.js';
-import { createBooking, getMachineWeek, listMyBookings } from './service.js';
+import { cancelBooking, createBooking, getMachineWeek, listMyBookings } from './service.js';
 
 export function createBookingRouter() {
   const router = express.Router();
@@ -45,6 +46,25 @@ export function createBookingRouter() {
       });
 
       res.status(200).json(bookings);
+    },
+  );
+
+  router.delete(
+    '/:slug/bookings/:id',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema.passthrough() }),
+    requireMember,
+    validate({ params: bookingIdParamsSchema }),
+    async (req, res) => {
+      await cancelBooking({
+        userId: req.user.id,
+        houseId: req.house.id,
+        bookingId: req.params.id,
+        isAdmin: false,
+        now: new Date(),
+      });
+
+      res.status(204).send();
     },
   );
 

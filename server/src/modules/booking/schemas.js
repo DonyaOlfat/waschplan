@@ -15,3 +15,7 @@ export const weekParamsSchema = houseSlugParamsSchema.extend({
 export const weekQuerySchema = z.strictObject({
   start: z.iso.date(),
 });
+
+export const bookingIdParamsSchema = houseSlugParamsSchema.extend({
+  id: z.string().trim().min(1).max(64),
+});
