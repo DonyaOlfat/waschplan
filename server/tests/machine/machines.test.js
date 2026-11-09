@@ -2,6 +2,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/lib/prisma.js';
+import { setMachineBroken } from '../../src/modules/machine/service.js';
 import { createLoginRateLimit } from '../../src/middleware/login-rate-limit.js';
 import { resetDatabase } from '../helpers/reset-database.js';
 
@@ -41,6 +42,25 @@ async function createNamedHouse(agent, name) {
 function machinesPath(slug, id) {
   const path = `/api/houses/${slug}/machines`;
   return id ? `${path}/${id}` : path;
+}
+
+function bookingAt(machineId, userId, startsAt, status) {
+  return {
+    machineId,
+    userId,
+    startsAt,
+    endsAt: new Date(startsAt.getTime() + 60_000),
+    status,
+  };
+}
+
+function statusAt(bookings, machineId, startsAt) {
+  const match = bookings.find(
+    (booking) =>
+      booking.machineId === machineId && booking.startsAt.getTime() === startsAt.getTime(),
+  );
+
+  return match.status;
 }
 
 describe('machines', () => {
@@ -539,6 +559,94 @@ describe('machines', () => {
       expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
         false,
       );
+    });
+  });
+
+  describe('setMachineBroken', () => {
+    it('marks future active bookings on that machine as affected', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const bea = await registerAndLogin('bea@example.com', 'Bea');
+      const house = await createNamedHouse(ada, 'Haus');
+
+      await bea.post('/api/houses/join').send({ inviteCode: house.inviteCode });
+
+      const adaUser = await prisma.user.findUnique({ where: { email: 'ada@example.com' } });
+      const beaUser = await prisma.user.findUnique({ where: { email: 'bea@example.com' } });
+      const now = new Date('2026-06-15T10:00:00.000Z');
+      const machine = await prisma.machine.create({
+        data: { houseId: house.id, name: 'Waschmaschine 1', type: 'WASHER' },
+      });
+      const other = await prisma.machine.create({
+        data: { houseId: house.id, name: 'Trockner', type: 'DRYER' },
+      });
+      const justAfter = new Date(now.getTime() + 1);
+      const otherUserAfter = new Date(now.getTime() + 2);
+      const atNow = new Date(now.getTime());
+      const justBefore = new Date(now.getTime() - 1);
+      const futureAffected = new Date(now.getTime() + 60 * 60 * 1000);
+      const pastAffected = new Date(now.getTime() - 60 * 60 * 1000);
+      const otherFuture = new Date(now.getTime() + 3);
+
+      await prisma.booking.createMany({
+        data: [
+          bookingAt(machine.id, adaUser.id, justAfter, 'ACTIVE'),
+          bookingAt(machine.id, beaUser.id, otherUserAfter, 'ACTIVE'),
+          bookingAt(machine.id, adaUser.id, atNow, 'ACTIVE'),
+          bookingAt(machine.id, beaUser.id, justBefore, 'ACTIVE'),
+          bookingAt(machine.id, adaUser.id, futureAffected, 'AFFECTED'),
+          bookingAt(machine.id, beaUser.id, pastAffected, 'AFFECTED'),
+          bookingAt(other.id, adaUser.id, otherFuture, 'ACTIVE'),
+        ],
+      });
+
+      const broken = await setMachineBroken({
+        houseId: house.id,
+        machineId: machine.id,
+        isBroken: true,
+        now,
+      });
+      const afterBreak = await prisma.booking.findMany();
+
+      expect(broken).toMatchObject({
+        id: machine.id,
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: true,
+      });
+      expect(afterBreak).toHaveLength(7);
+      expect(statusAt(afterBreak, machine.id, justAfter)).toBe('AFFECTED');
+      expect(statusAt(afterBreak, machine.id, otherUserAfter)).toBe('AFFECTED');
+      expect(statusAt(afterBreak, machine.id, atNow)).toBe('ACTIVE');
+      expect(statusAt(afterBreak, machine.id, justBefore)).toBe('ACTIVE');
+      expect(statusAt(afterBreak, machine.id, futureAffected)).toBe('AFFECTED');
+      expect(statusAt(afterBreak, machine.id, pastAffected)).toBe('AFFECTED');
+      expect(statusAt(afterBreak, other.id, otherFuture)).toBe('ACTIVE');
+      expect(await prisma.machine.findUnique({ where: { id: other.id } })).toMatchObject({
+        isBroken: false,
+      });
+
+      const again = await setMachineBroken({
+        houseId: house.id,
+        machineId: machine.id,
+        isBroken: true,
+        now,
+      });
+      const afterAgain = await prisma.booking.findMany();
+
+      expect(again).toEqual({
+        id: machine.id,
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: true,
+        createdAt: machine.createdAt,
+      });
+      expect(statusAt(afterAgain, machine.id, justAfter)).toBe('AFFECTED');
+      expect(statusAt(afterAgain, machine.id, otherUserAfter)).toBe('AFFECTED');
+      expect(statusAt(afterAgain, machine.id, atNow)).toBe('ACTIVE');
+      expect(statusAt(afterAgain, machine.id, justBefore)).toBe('ACTIVE');
+      expect(statusAt(afterAgain, machine.id, futureAffected)).toBe('AFFECTED');
+      expect(statusAt(afterAgain, machine.id, pastAffected)).toBe('AFFECTED');
+      expect(statusAt(afterAgain, other.id, otherFuture)).toBe('ACTIVE');
     });
   });
 
