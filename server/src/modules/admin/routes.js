@@ -7,7 +7,7 @@ import {
   memberUserIdParamsSchema,
   updateMemberRoleBodySchema,
 } from './schemas.js';
-import { listMembers, regenerateInviteCode, updateMemberRole } from './service.js';
+import { listMembers, regenerateInviteCode, removeMember, updateMemberRole } from './service.js';
 
 export function createAdminRouter() {
   const router = express.Router();
@@ -50,6 +50,23 @@ export function createAdminRouter() {
         role: req.body.role,
       });
       res.status(200).json(member);
+    },
+  );
+
+  router.delete(
+    '/:slug/members/:userId',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema.passthrough() }),
+    requireMember,
+    requireAdmin,
+    validate({ params: memberUserIdParamsSchema }),
+    async (req, res) => {
+      await removeMember({
+        houseId: req.house.id,
+        userId: req.params.userId,
+        now: new Date(),
+      });
+      res.status(204).send();
     },
   );
 

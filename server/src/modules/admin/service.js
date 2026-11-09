@@ -79,6 +79,38 @@ export async function updateMemberRole({ houseId, userId, role }) {
   });
 }
 
+export async function removeMember({ houseId, userId, now }) {
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Membership" WHERE "houseId" = ${houseId} FOR UPDATE`;
+
+    const membership = await tx.membership.findUnique({ where: { userId } });
+
+    if (!membership || membership.houseId !== houseId) {
+      throw new AppError('NOT_FOUND');
+    }
+
+    if (membership.role === 'ADMIN') {
+      const adminCount = await tx.membership.count({
+        where: { houseId, role: 'ADMIN' },
+      });
+
+      if (adminCount <= 1) {
+        throw new AppError('LAST_ADMIN');
+      }
+    }
+
+    await tx.booking.deleteMany({
+      where: {
+        userId,
+        startsAt: { gt: now },
+        machine: { houseId },
+      },
+    });
+
+    await tx.membership.delete({ where: { userId } });
+  });
+}
+
 export async function regenerateInviteCode({ houseId }) {
   for (let attempt = 0; attempt < REGENERATE_ATTEMPTS; attempt += 1) {
     try {
