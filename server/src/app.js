@@ -4,6 +4,7 @@ import { healthRouter } from './modules/health/routes.js';
 import { createAuthRouter } from './modules/auth/routes.js';
 import { createHouseRouter } from './modules/house/routes.js';
 import { createMachineRouter } from './modules/machine/routes.js';
+import { createBookingRouter } from './modules/booking/routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFoundHandler } from './middleware/not-found.js';
 
@@ -16,6 +17,7 @@ export function createApp({ configure, auth } = {}) {
   app.use('/api/auth', createAuthRouter(auth));
   app.use('/api/houses', createHouseRouter());
   app.use('/api/houses', createMachineRouter());
+  app.use('/api/houses', createBookingRouter());
 
   if (configure) {
     configure(app);
