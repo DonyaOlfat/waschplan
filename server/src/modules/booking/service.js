@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { AppError } from '../../lib/errors.js';
 import { prisma } from '../../lib/prisma.js';
 import {
@@ -53,16 +54,24 @@ export async function createBooking({ userId, houseId, machineId, startsAt, now 
       throw new Error('Validated slot is missing from the generated week.');
     }
 
-    const booking = await tx.booking.create({
-      data: {
-        machineId: machine.id,
-        userId,
-        startsAt: slot.startsAt,
-        endsAt: slot.endsAt,
-        status: 'ACTIVE',
-      },
-    });
+    try {
+      const booking = await tx.booking.create({
+        data: {
+          machineId: machine.id,
+          userId,
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          status: 'ACTIVE',
+        },
+      });
 
-    return toPublicBooking(booking);
+      return toPublicBooking(booking);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError('SLOT_TAKEN');
+      }
+
+      throw error;
+    }
   });
 }
