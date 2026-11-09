@@ -138,6 +138,30 @@ export async function getMachineWeek({ houseId, machineId, start, userId, now })
   };
 }
 
+export async function listMyBookings({ userId, houseId, now }) {
+  const bookings = await prisma.booking.findMany({
+    where: {
+      userId,
+      status: { in: ['ACTIVE', 'AFFECTED'] },
+      startsAt: { gt: now },
+      machine: { houseId },
+    },
+    include: {
+      machine: { select: { id: true, name: true, type: true } },
+    },
+    orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+  });
+
+  return bookings.map((booking) => ({
+    ...toPublicBooking(booking),
+    machine: {
+      id: booking.machine.id,
+      name: booking.machine.name,
+      type: booking.machine.type,
+    },
+  }));
+}
+
 function toWeekSlot(slot, booking, { userId, now, isBroken }) {
   const view = {
     startsAt: slot.startsAt,

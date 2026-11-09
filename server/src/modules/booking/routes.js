@@ -8,7 +8,7 @@ import {
   weekParamsSchema,
   weekQuerySchema,
 } from './schemas.js';
-import { createBooking, getMachineWeek } from './service.js';
+import { createBooking, getMachineWeek, listMyBookings } from './service.js';
 
 export function createBookingRouter() {
   const router = express.Router();
@@ -29,6 +29,22 @@ export function createBookingRouter() {
       });
 
       res.status(201).json(booking);
+    },
+  );
+
+  router.get(
+    '/:slug/bookings/me',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema }),
+    requireMember,
+    async (req, res) => {
+      const bookings = await listMyBookings({
+        userId: req.user.id,
+        houseId: req.house.id,
+        now: new Date(),
+      });
+
+      res.status(200).json(bookings);
     },
   );
 
