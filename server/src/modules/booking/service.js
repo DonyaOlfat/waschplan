@@ -162,7 +162,7 @@ export async function listMyBookings({ userId, houseId, now }) {
   }));
 }
 
-export async function cancelBooking({ userId, houseId, bookingId, now }) {
+export async function cancelBooking({ userId, houseId, bookingId, isAdmin, now }) {
   const booking = await prisma.booking.findFirst({
     where: { id: bookingId, machine: { houseId } },
   });
@@ -171,7 +171,7 @@ export async function cancelBooking({ userId, houseId, bookingId, now }) {
     throw new AppError('NOT_FOUND');
   }
 
-  if (booking.userId !== userId) {
+  if (booking.userId !== userId && !isAdmin) {
     throw new AppError('FORBIDDEN');
   }
 
