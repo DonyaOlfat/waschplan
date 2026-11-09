@@ -21,7 +21,7 @@ curl localhost:3000/api/health
 ```
 
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
 Other commands:
@@ -63,17 +63,91 @@ All four users sign in with the password `waschplan`:
 
 Running the seed again updates these same rows.
 
+## Architecture
+
+`server/src/server.js` listens. `createApp` in `server/src/app.js` builds the app for Supertest.
+
+Feature code lives in `server/src/modules/<feature>/{routes,service,schemas}.js`.
+
+Postgres and Prisma hold users, sessions, houses, memberships, machines, and bookings. Slots are computed in Europe/Berlin, not stored. One booking per machine and start time is a database unique constraint.
+
+Auth is the `session` cookie. Passwords are bcrypt hashes and are not returned.
+
+Middleware, in order: helmet, CORS allowlist from `CORS_ORIGINS` (default `http://localhost:5173`, credentials on, no `*`), pino-http (no logs when `NODE_ENV` is `test`; the cookie, `Set-Cookie`, password, and password hash are not logged), JSON body parser, cookie parser, routers, not-found handler, error handler.
+
+```mermaid
+erDiagram
+  User ||--o{ Session : has
+  User ||--o| Membership : has
+  House ||--o{ Membership : has
+  House ||--o{ Machine : has
+  Machine ||--o{ Booking : has
+  User ||--o{ Booking : makes
+
+  User {
+    string id PK
+    string email UK
+    string name
+    string passwordHash
+    datetime createdAt
+  }
+  Session {
+    string id PK
+    string userId FK
+    datetime expiresAt
+  }
+  House {
+    string id PK
+    string name
+    string slug UK
+    string inviteCode UK
+    datetime createdAt
+  }
+  Membership {
+    string id PK
+    string userId UK
+    string houseId FK
+    Role role
+    datetime createdAt
+  }
+  Machine {
+    string id PK
+    string houseId FK
+    string name
+    MachineType type
+    boolean isBroken
+    datetime createdAt
+  }
+  Booking {
+    string id PK
+    string machineId FK
+    string userId FK
+    datetime startsAt
+    datetime endsAt
+    BookingStatus status
+    datetime createdAt
+  }
+```
+
+`Role` is `ADMIN` or `RESIDENT`. `MachineType` is `WASHER` or `DRYER`. `BookingStatus` is `ACTIVE` or `AFFECTED`.
+
+`Membership.userId` is unique. `Machine` is unique on `(houseId, name)`. `Booking` is unique on `(machineId, startsAt)` and has an index on `(userId, startsAt)`.
+
 ## server/
 
 - `src/server.js` starts the HTTP server.
 - `src/app.js` builds the Express app without listening, so tests can call it directly.
 - `src/config/env.js` checks environment variables with Zod.
+- `src/middleware/` adds helmet, the CORS allowlist, and request logging.
 - `src/modules/health/routes.js` serves `GET /api/health`.
 - `tests/` holds the Vitest tests.
+
+Routes, examples, and error codes are in [docs/api.md](docs/api.md).
 
 ## Docs
 
 - [docs/spec.md](docs/spec.md): what the backend does, its rules, data model and API.
+- [docs/api.md](docs/api.md): every endpoint, with examples and error codes.
 - [docs/backend-plan.md](docs/backend-plan.md): the build plan, split into one issue and one pull request per step.
 - [AGENTS.md](AGENTS.md): conventions for code, commits and pull requests.
 - [docs/project-selection.md](docs/project-selection.md): how this project was chosen from three candidates.
