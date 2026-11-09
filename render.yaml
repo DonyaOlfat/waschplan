@@ -1,0 +1,18 @@
+services:
+  - type: web
+    runtime: node
+    name: waschplan-api
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev
+    startCommand: npm run start:prod -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
