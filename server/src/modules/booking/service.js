@@ -21,6 +21,16 @@ export function toPublicBooking(booking) {
 
 export async function createBooking({ userId, houseId, machineId, startsAt, now }) {
   return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw`
+      SELECT id FROM "Membership"
+      WHERE "userId" = ${userId} AND "houseId" = ${houseId}
+      FOR UPDATE
+    `;
+
+    if (locked.length === 0) {
+      throw new AppError('NOT_FOUND');
+    }
+
     const machine = await tx.machine.findFirst({
       where: { id: machineId, houseId },
     });
@@ -43,6 +53,19 @@ export async function createBooking({ userId, houseId, machineId, startsAt, now 
 
     if (machine.isBroken) {
       throw new AppError('MACHINE_BROKEN');
+    }
+
+    const upcomingCount = await tx.booking.count({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        startsAt: { gt: now },
+        machine: { houseId },
+      },
+    });
+
+    if (upcomingCount >= 2) {
+      throw new AppError('BOOKING_LIMIT');
     }
 
     const startMs = new Date(startsAt).getTime();

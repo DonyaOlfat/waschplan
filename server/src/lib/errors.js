@@ -7,6 +7,7 @@ export const errorCodes = {
   LAST_ADMIN: { status: 409, message: 'A house must keep at least one admin.' },
   MACHINE_NAME_TAKEN: { status: 409, message: 'A machine with this name already exists.' },
   MACHINE_BROKEN: { status: 409, message: 'This machine is broken.' },
+  BOOKING_LIMIT: { status: 409, message: 'You already have 2 upcoming bookings.' },
   SLOT_TAKEN: { status: 409, message: 'This slot is already booked.' },
   OUTSIDE_OPENING_HOURS: { status: 422, message: 'This time is outside opening hours.' },
   OUTSIDE_BOOKING_WINDOW: { status: 422, message: 'This time is outside the booking window.' },
