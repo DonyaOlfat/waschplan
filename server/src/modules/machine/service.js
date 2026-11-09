@@ -86,6 +86,15 @@ export async function setMachineBroken({ houseId, machineId, isBroken, now }) {
         },
         data: { status: 'AFFECTED' },
       });
+    } else {
+      await tx.booking.updateMany({
+        where: {
+          machineId: existing.id,
+          status: 'AFFECTED',
+          startsAt: { gt: now },
+        },
+        data: { status: 'ACTIVE' },
+      });
     }
 
     return updated;
