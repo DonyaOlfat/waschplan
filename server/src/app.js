@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
+import { trustProxySetting } from './lib/trust-proxy.js';
 import { healthRouter } from './modules/health/routes.js';
 import { createAuthRouter } from './modules/auth/routes.js';
 import { createHouseRouter } from './modules/house/routes.js';
@@ -15,6 +16,10 @@ import { notFoundHandler } from './middleware/not-found.js';
 
 export function createApp({ configure, auth } = {}) {
   const app = express();
+
+  if (trustProxySetting(env.NODE_ENV) === 1) {
+    app.set('trust proxy', 1);
+  }
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(createCorsMiddleware(parseCorsOrigins(env.CORS_ORIGINS)));
