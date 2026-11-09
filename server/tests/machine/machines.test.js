@@ -555,12 +555,8 @@ describe('machines', () => {
       expect(wrongHouse.body).toEqual(outsider.body);
       expect(loggedOut.status).toBe(401);
       expect(loggedOut.body.error.code).toBe('UNAUTHENTICATED');
-      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
-        false,
-      );
-      expect((await prisma.machine.findUnique({ where: { id: foreign.id } })).isBroken).toBe(
-        false,
-      );
+      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(false);
+      expect((await prisma.machine.findUnique({ where: { id: foreign.id } })).isBroken).toBe(false);
     });
 
     it('rejects a non-boolean isBroken, an empty body, and extra keys', async () => {
@@ -584,9 +580,7 @@ describe('machines', () => {
       expect(empty.body.error.code).toBe('VALIDATION_ERROR');
       expect(extra.status).toBe(400);
       expect(extra.body.error.code).toBe('VALIDATION_ERROR');
-      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
-        false,
-      );
+      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(false);
     });
 
     it('breaks a machine, rejects a booking, and restores future bookings on repair', async () => {
