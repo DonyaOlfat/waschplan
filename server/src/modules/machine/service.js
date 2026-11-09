@@ -61,3 +61,23 @@ export async function renameMachine({ houseId, machineId, name }) {
     throw error;
   }
 }
+
+export async function deleteMachine({ houseId, machineId }) {
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.machine.findFirst({
+      where: { id: machineId, houseId },
+    });
+
+    if (!existing) {
+      throw new AppError('NOT_FOUND');
+    }
+
+    await tx.booking.deleteMany({
+      where: { machineId: existing.id },
+    });
+
+    await tx.machine.delete({
+      where: { id: existing.id },
+    });
+  });
+}
