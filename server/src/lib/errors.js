@@ -5,6 +5,7 @@ export const errorCodes = {
   CONFLICT: { status: 409, message: 'This conflicts with existing data.' },
   ALREADY_IN_HOUSE: { status: 409, message: 'You are already in a house.' },
   LAST_ADMIN: { status: 409, message: 'A house must keep at least one admin.' },
+  MACHINE_NAME_TAKEN: { status: 409, message: 'A machine with this name already exists.' },
   EMAIL_TAKEN: { status: 409, message: 'An account with this email already exists.' },
   INVALID_CREDENTIALS: { status: 401, message: 'Email or password is incorrect.' },
   UNAUTHENTICATED: { status: 401, message: 'You need to log in.' },

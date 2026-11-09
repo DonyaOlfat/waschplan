@@ -1,9 +1,14 @@
 import express from 'express';
 import { requireAuth } from '../../middleware/require-auth.js';
-import { requireMember } from '../../middleware/require-member.js';
+import { requireAdmin, requireMember } from '../../middleware/require-member.js';
 import { validate } from '../../middleware/validate.js';
-import { houseSlugParamsSchema } from './schemas.js';
-import { listMachines } from './service.js';
+import {
+  createMachineBodySchema,
+  houseSlugParamsSchema,
+  machineIdParamsSchema,
+  renameMachineBodySchema,
+} from './schemas.js';
+import { createMachine, listMachines, renameMachine } from './service.js';
 
 export function createMachineRouter() {
   const router = express.Router();
@@ -16,6 +21,40 @@ export function createMachineRouter() {
     async (req, res) => {
       const machines = await listMachines(req.house.id);
       res.status(200).json(machines);
+    },
+  );
+
+  router.post(
+    '/:slug/machines',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema }),
+    requireMember,
+    requireAdmin,
+    validate({ body: createMachineBodySchema }),
+    async (req, res) => {
+      const machine = await createMachine({
+        houseId: req.house.id,
+        name: req.body.name,
+        type: req.body.type,
+      });
+      res.status(201).json(machine);
+    },
+  );
+
+  router.patch(
+    '/:slug/machines/:id',
+    requireAuth,
+    validate({ params: houseSlugParamsSchema.passthrough() }),
+    requireMember,
+    requireAdmin,
+    validate({ params: machineIdParamsSchema, body: renameMachineBodySchema }),
+    async (req, res) => {
+      const machine = await renameMachine({
+        houseId: req.house.id,
+        machineId: req.params.id,
+        name: req.body.name,
+      });
+      res.status(200).json(machine);
     },
   );
 
