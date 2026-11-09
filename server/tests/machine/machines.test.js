@@ -394,6 +394,152 @@ describe('machines', () => {
       expect(typed.body.error.code).toBe('VALIDATION_ERROR');
       expect((await prisma.machine.findUnique({ where: { id: machine.id } })).name).toBe('Links');
     });
+
+    it('lets an admin mark a machine as broken without changing name or type', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const house = await createNamedHouse(ada, 'Haus');
+      const createdAt = new Date('2026-11-01T09:00:00.000Z');
+      const machine = await prisma.machine.create({
+        data: {
+          houseId: house.id,
+          name: 'Waschmaschine 1',
+          type: 'WASHER',
+          createdAt,
+        },
+      });
+      const response = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        id: machine.id,
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: true,
+        createdAt: createdAt.toISOString(),
+      });
+
+      const row = await prisma.machine.findUnique({ where: { id: machine.id } });
+
+      expect(row).toMatchObject({
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: true,
+      });
+    });
+
+    it('lets an admin clear the broken flag without changing the name', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const house = await createNamedHouse(ada, 'Haus');
+      const machine = await prisma.machine.create({
+        data: {
+          houseId: house.id,
+          name: 'Waschmaschine 1',
+          type: 'WASHER',
+          isBroken: true,
+        },
+      });
+      const response = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: false,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        id: machine.id,
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: false,
+      });
+      expect(response.body).not.toHaveProperty('houseId');
+
+      const row = await prisma.machine.findUnique({ where: { id: machine.id } });
+
+      expect(row).toMatchObject({
+        name: 'Waschmaschine 1',
+        type: 'WASHER',
+        isBroken: false,
+      });
+    });
+
+    it('rejects a broken toggle from a resident, a non-member, an unknown id, another house, and a logged-out caller', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const bea = await registerAndLogin('bea@example.com', 'Bea');
+      const cy = await registerAndLogin('cy@example.com', 'Cy');
+      const house = await createNamedHouse(ada, 'Haus');
+      const other = await createNamedHouse(cy, 'Other');
+
+      await bea.post('/api/houses/join').send({ inviteCode: house.inviteCode });
+
+      const machine = await prisma.machine.create({
+        data: { houseId: house.id, name: 'Waschmaschine 1', type: 'WASHER' },
+      });
+      const foreign = await prisma.machine.create({
+        data: { houseId: other.id, name: 'Fremd', type: 'DRYER' },
+      });
+      const resident = await bea.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+      });
+      const outsider = await cy.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+      });
+      const missing = await ada.patch(machinesPath(house.slug, 'missing-machine')).send({
+        isBroken: true,
+      });
+      const wrongHouse = await ada.patch(machinesPath(house.slug, foreign.id)).send({
+        isBroken: true,
+      });
+      const loggedOut = await request(app).patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+      });
+
+      expect(resident.status).toBe(403);
+      expect(resident.body).toEqual({
+        error: { code: 'FORBIDDEN', message: 'You are not allowed to do that.' },
+      });
+      expect(outsider.status).toBe(404);
+      expect(outsider.body).toEqual({
+        error: { code: 'NOT_FOUND', message: 'Not found.' },
+      });
+      expect(missing.status).toBe(404);
+      expect(missing.body).toEqual(outsider.body);
+      expect(wrongHouse.status).toBe(404);
+      expect(wrongHouse.body).toEqual(outsider.body);
+      expect(loggedOut.status).toBe(401);
+      expect(loggedOut.body.error.code).toBe('UNAUTHENTICATED');
+      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
+        false,
+      );
+      expect((await prisma.machine.findUnique({ where: { id: foreign.id } })).isBroken).toBe(
+        false,
+      );
+    });
+
+    it('rejects a non-boolean isBroken, an empty body, and extra keys', async () => {
+      const ada = await registerAndLogin('ada@example.com', 'Ada');
+      const house = await createNamedHouse(ada, 'Haus');
+      const machine = await prisma.machine.create({
+        data: { houseId: house.id, name: 'Waschmaschine 1', type: 'WASHER' },
+      });
+      const text = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: 'yes',
+      });
+      const empty = await ada.patch(machinesPath(house.slug, machine.id)).send({});
+      const extra = await ada.patch(machinesPath(house.slug, machine.id)).send({
+        isBroken: true,
+        type: 'DRYER',
+      });
+
+      expect(text.status).toBe(400);
+      expect(text.body.error.code).toBe('VALIDATION_ERROR');
+      expect(empty.status).toBe(400);
+      expect(empty.body.error.code).toBe('VALIDATION_ERROR');
+      expect(extra.status).toBe(400);
+      expect(extra.body.error.code).toBe('VALIDATION_ERROR');
+      expect((await prisma.machine.findUnique({ where: { id: machine.id } })).isBroken).toBe(
+        false,
+      );
+    });
   });
 
   describe('DELETE /api/houses/:slug/machines/:id', () => {

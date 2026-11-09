@@ -6,9 +6,15 @@ import {
   createMachineBodySchema,
   houseSlugParamsSchema,
   machineIdParamsSchema,
-  renameMachineBodySchema,
+  patchMachineBodySchema,
 } from './schemas.js';
-import { createMachine, deleteMachine, listMachines, renameMachine } from './service.js';
+import {
+  createMachine,
+  deleteMachine,
+  listMachines,
+  renameMachine,
+  setMachineBroken,
+} from './service.js';
 
 export function createMachineRouter() {
   const router = express.Router();
@@ -47,13 +53,22 @@ export function createMachineRouter() {
     validate({ params: houseSlugParamsSchema.passthrough() }),
     requireMember,
     requireAdmin,
-    validate({ params: machineIdParamsSchema, body: renameMachineBodySchema }),
+    validate({ params: machineIdParamsSchema, body: patchMachineBodySchema }),
     async (req, res) => {
-      const machine = await renameMachine({
-        houseId: req.house.id,
-        machineId: req.params.id,
-        name: req.body.name,
-      });
+      const machine =
+        'isBroken' in req.body
+          ? await setMachineBroken({
+              houseId: req.house.id,
+              machineId: req.params.id,
+              isBroken: req.body.isBroken,
+              now: new Date(),
+            })
+          : await renameMachine({
+              houseId: req.house.id,
+              machineId: req.params.id,
+              name: req.body.name,
+            });
+
       res.status(200).json(machine);
     },
   );

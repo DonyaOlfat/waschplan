@@ -62,6 +62,25 @@ export async function renameMachine({ houseId, machineId, name }) {
   }
 }
 
+export async function setMachineBroken({ houseId, machineId, isBroken }) {
+  const machine = await prisma.$transaction(async (tx) => {
+    const existing = await tx.machine.findFirst({
+      where: { id: machineId, houseId },
+    });
+
+    if (!existing) {
+      throw new AppError('NOT_FOUND');
+    }
+
+    return tx.machine.update({
+      where: { id: existing.id },
+      data: { isBroken },
+    });
+  });
+
+  return toPublicMachine(machine);
+}
+
 export async function deleteMachine({ houseId, machineId }) {
   await prisma.$transaction(async (tx) => {
     const existing = await tx.machine.findFirst({
